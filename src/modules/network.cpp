@@ -95,9 +95,7 @@ waybar::modules::Network::Network(const std::string &id, const Json::Value &conf
 #ifdef WANT_RFKILL
       rfkill_{RFKILL_TYPE_WLAN},
 #endif
-      frequency_(0.0),
-      tx_bitrate_(0),
-      rx_bitrate_(0) {
+      frequency_(0.0) {
 
   // Start with some "text" in the module's label_. update() will then
   // update it. Since the text should be different, update() will be able
@@ -355,7 +353,8 @@ auto waybar::modules::Network::update() -> void {
       fmt::arg("bandwidthUpBytes", pow_format(bandwidth_up / interval_.count(), "B/s")),
       fmt::arg("bandwidthTotalBytes",
                pow_format((bandwidth_up + bandwidth_down) / interval_.count(), "B/s")),
-      fmt::arg("txBitrate", tx_bitrate_), fmt::arg("rxBitrate", rx_bitrate_));
+      fmt::arg("tx_bitrate", pow_format(tx_bitrate_ * 100000 / 8, "B/s")),
+      fmt::arg("rx_bitrate", pow_format(rx_bitrate_ * 100000 / 8, "B/s")));
   if (text.compare(label_.get_label()) != 0) {
     label_.set_markup(text);
     if (text.empty()) {
@@ -390,7 +389,8 @@ auto waybar::modules::Network::update() -> void {
           fmt::arg("bandwidthUpBytes", pow_format(bandwidth_up / interval_.count(), "B/s")),
           fmt::arg("bandwidthTotalBytes",
                    pow_format((bandwidth_up + bandwidth_down) / interval_.count(), "B/s")),
-          fmt::arg("txBitrate", tx_bitrate_), fmt::arg("rxBitrate", rx_bitrate_));
+          fmt::arg("tx_bitrate", pow_format(tx_bitrate_ * 100000 / 8, "B/s")),
+          fmt::arg("rx_bitrate", pow_format(rx_bitrate_ * 100000 / 8, "B/s")));
       if (label_.get_tooltip_text() != tooltip_text) {
         label_.set_tooltip_markup(tooltip_text);
       }
@@ -428,6 +428,8 @@ void waybar::modules::Network::clearIface() {
   signal_strength_ = 0;
   signal_strength_app_.clear();
   frequency_ = 0.0;
+  tx_bitrate_ = 0;
+  rx_bitrate_ = 0;
 }
 
 int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
@@ -777,6 +779,7 @@ int waybar::modules::Network::handleScan(struct nl_msg *msg, void *data) {
   bss_policy[NL80211_BSS_SIGNAL_MBM].type = NLA_U32;
   bss_policy[NL80211_BSS_SIGNAL_UNSPEC].type = NLA_U8;
   bss_policy[NL80211_BSS_STATUS].type = NLA_U32;
+  bss_policy[NL80211_BSS_STA_INFO].type = NLA_NESTED;
 
   if (nla_parse(tb, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0), genlmsg_attrlen(gnlh, 0),
                 nullptr) < 0) {
@@ -793,9 +796,36 @@ int waybar::modules::Network::handleScan(struct nl_msg *msg, void *data) {
   }
   net->parseEssid(bss);
   net->parseSignal(bss);
-  net->parseBitrates(bss);
   net->parseFreq(bss);
   net->parseBssid(bss);
+
+  if (bss[NL80211_BSS_STA_INFO] != nullptr) {
+    struct nlattr *sinfo[NL80211_STA_INFO_MAX + 1];
+    if (nla_parse_nested(sinfo, NL80211_STA_INFO_MAX, bss[NL80211_BSS_STA_INFO], nullptr) == 0) {
+      if (sinfo[NL80211_STA_INFO_TX_BITRATE] != nullptr) {
+        struct nlattr *tx_br_info[NL80211_RATE_INFO_MAX + 1];
+        if (nla_parse_nested(tx_br_info, NL80211_RATE_INFO_MAX,
+                               sinfo[NL80211_STA_INFO_TX_BITRATE], nullptr) == 0) {
+          if (tx_br_info[NL80211_RATE_INFO_BITRATE32] != nullptr) {
+            net->tx_bitrate_ = nla_get_u32(tx_br_info[NL80211_RATE_INFO_BITRATE32]);
+          } else if (tx_br_info[NL80211_RATE_INFO_BITRATE] != nullptr) {
+            net->tx_bitrate_ = nla_get_u16(tx_br_info[NL80211_RATE_INFO_BITRATE]);
+          }
+        }
+      }
+      if (sinfo[NL80211_STA_INFO_RX_BITRATE] != nullptr) {
+        struct nlattr *rx_br_info[NL80211_RATE_INFO_MAX + 1];
+        if (nla_parse_nested(rx_br_info, NL80211_RATE_INFO_MAX,
+                               sinfo[NL80211_STA_INFO_RX_BITRATE], nullptr) == 0) {
+          if (rx_br_info[NL80211_RATE_INFO_BITRATE32] != nullptr) {
+            net->rx_bitrate_ = nla_get_u32(rx_br_info[NL80211_RATE_INFO_BITRATE32]);
+          } else if (rx_br_info[NL80211_RATE_INFO_BITRATE] != nullptr) {
+            net->rx_bitrate_ = nla_get_u16(rx_br_info[NL80211_RATE_INFO_BITRATE]);
+          }
+        }
+      }
+    }
+  }
   return NL_OK;
 }
 
@@ -939,29 +969,4 @@ bool waybar::modules::Network::wildcardMatch(const std::string &pattern,
   while (p < P && pattern[p] == '*') p++;
 
   return p == P;
-}
-
-void waybar::modules::Network::parseBitrates(struct nlattr **bss) {
-  if (bss[NL80211_STA_INFO_TX_BITRATE] != nullptr) {
-    struct nlattr *rate_attr[NL80211_RATE_INFO_MAX + 1];
-    if (nla_parse_nested(rate_attr, NL80211_RATE_INFO_MAX, bss[NL80211_STA_INFO_TX_BITRATE],
-                         nullptr) == 0) {
-      if (rate_attr[NL80211_RATE_INFO_BITRATE32] != nullptr) {
-        tx_bitrate_ = nla_get_u32(rate_attr[NL80211_RATE_INFO_BITRATE32]);
-      } else if (rate_attr[NL80211_RATE_INFO_BITRATE] != nullptr) {
-        tx_bitrate_ = nla_get_u16(rate_attr[NL80211_RATE_INFO_BITRATE]);
-      }
-    }
-  }
-  if (bss[NL80211_STA_INFO_RX_BITRATE] != nullptr) {
-    struct nlattr *rate_attr[NL80211_RATE_INFO_MAX + 1];
-    if (nla_parse_nested(rate_attr, NL80211_RATE_INFO_MAX, bss[NL80211_STA_INFO_RX_BITRATE],
-                         nullptr) == 0) {
-      if (rate_attr[NL80211_RATE_INFO_BITRATE32] != nullptr) {
-        rx_bitrate_ = nla_get_u32(rate_attr[NL80211_RATE_INFO_BITRATE32]);
-      } else if (rate_attr[NL80211_RATE_INFO_BITRATE] != nullptr) {
-        rx_bitrate_ = nla_get_u16(rate_attr[NL80211_RATE_INFO_BITRATE]);
-      }
-    }
-  }
 }

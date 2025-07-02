@@ -173,6 +173,9 @@ Addressed by *network*
 
 *{frequency}*: Frequency of the wireless network in GHz.
 
+*{tx_bitrate}*: Link transmit bitrate (e.g., 866.7 Mb/s).
+*{rx_bitrate}*: Link receive bitrate (e.g., 866.7 Mb/s).
+
 *{bandwidthUpBits}*: Instant up speed in bits/seconds.
 
 *{bandwidthDownBits}*: Instant down speed in bits/seconds.
@@ -190,10 +193,6 @@ Addressed by *network*
 *{bandwidthDownBytes}*: Instant down speed in bytes/seconds.
 
 *{bandwidthTotalBytes}*: Instant total speed in bytes/seconds.
-
-*{rxBitrate}*: Receive bitrate in kilobits per second (kbps).
-
-*{txBitrate}*: Transmit bitrate in kilobits per second (kbps).
 
 *{icon}*: Icon, as defined in *format-icons*.
 

@@ -41,7 +41,6 @@ class Network : public ALabel {
   void createEventSocket();
   void parseEssid(struct nlattr**);
   void parseSignal(struct nlattr**);
-  void parseBitrates(struct nlattr**);
   void parseFreq(struct nlattr**);
   void parseBssid(struct nlattr**);
   bool associatedOrJoined(struct nlattr**);
@@ -87,8 +86,6 @@ class Network : public ALabel {
   uint8_t signal_strength_;
   std::string signal_strength_app_;
   uint32_t route_priority;
-  uint32_t tx_bitrate_;
-  uint32_t rx_bitrate_;
 
   util::SleeperThread thread_;
   util::SleeperThread thread_timer_;
@@ -96,6 +93,8 @@ class Network : public ALabel {
   util::Rfkill rfkill_;
 #endif
   float frequency_;
+  uint32_t tx_bitrate_;
+  uint32_t rx_bitrate_;
 };
 
 }  // namespace waybar::modules
