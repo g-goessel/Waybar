@@ -191,6 +191,10 @@ Addressed by *network*
 
 *{bandwidthTotalBytes}*: Instant total speed in bytes/seconds.
 
+*{rxBitrate}*: Receive bitrate in kilobits per second (kbps).
+
+*{txBitrate}*: Transmit bitrate in kilobits per second (kbps).
+
 *{icon}*: Icon, as defined in *format-icons*.
 
 # EXAMPLES
