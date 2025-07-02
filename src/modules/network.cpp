@@ -367,7 +367,9 @@ auto waybar::modules::Network::update() -> void {
       fmt::arg("bandwidthDownBytes", pow_format(bandwidth_down / interval_.count(), "B/s")),
       fmt::arg("bandwidthUpBytes", pow_format(bandwidth_up / interval_.count(), "B/s")),
       fmt::arg("bandwidthTotalBytes",
-               pow_format((bandwidth_up + bandwidth_down) / interval_.count(), "B/s")));
+               pow_format((bandwidth_up + bandwidth_down) / interval_.count(), "B/s")),
+      fmt::arg("rxBitrate", pow_format(rx_bitrate_, "b/s")),
+      fmt::arg("txBitrate", pow_format(tx_bitrate_, "b/s")));
   if (text.compare(label_.get_label()) != 0) {
     label_.set_markup(text);
     if (text.empty()) {
@@ -401,7 +403,9 @@ auto waybar::modules::Network::update() -> void {
           fmt::arg("bandwidthDownBytes", pow_format(bandwidth_down / interval_.count(), "B/s")),
           fmt::arg("bandwidthUpBytes", pow_format(bandwidth_up / interval_.count(), "B/s")),
           fmt::arg("bandwidthTotalBytes",
-                   pow_format((bandwidth_up + bandwidth_down) / interval_.count(), "B/s")));
+                   pow_format((bandwidth_up + bandwidth_down) / interval_.count(), "B/s")),
+          fmt::arg("rxBitrate", pow_format(rx_bitrate_, "b/s")),
+          fmt::arg("txBitrate", pow_format(tx_bitrate_, "b/s")));
       if (label_.get_tooltip_text() != tooltip_text) {
         label_.set_tooltip_markup(tooltip_text);
       }
@@ -830,24 +834,24 @@ int waybar::modules::Network::handleStationGet(struct nl_msg *msg, void *data) {
 
   if (sinfo[NL80211_STA_INFO_TX_BITRATE] != nullptr) {
     struct nlattr *tx_br_info[NL80211_RATE_INFO_MAX + 1];
-    if (nla_parse_nested(tx_br_info, NL80211_RATE_INFO_MAX,
-                           sinfo[NL80211_STA_INFO_TX_BITRATE], nullptr) == 0) {
+    if (nla_parse_nested(tx_br_info, NL80211_RATE_INFO_MAX, sinfo[NL80211_STA_INFO_TX_BITRATE],
+                         nullptr) == 0) {
       if (tx_br_info[NL80211_RATE_INFO_BITRATE32] != nullptr) {
-        net->tx_bitrate_ = nla_get_u32(tx_br_info[NL80211_RATE_INFO_BITRATE32]);
+        net->tx_bitrate_ = nla_get_u32(tx_br_info[NL80211_RATE_INFO_BITRATE32]) * pow(10, 5);
       } else if (tx_br_info[NL80211_RATE_INFO_BITRATE] != nullptr) {
-        net->tx_bitrate_ = nla_get_u16(tx_br_info[NL80211_RATE_INFO_BITRATE]);
+        net->tx_bitrate_ = nla_get_u16(tx_br_info[NL80211_RATE_INFO_BITRATE]) * pow(10, 5);
       }
     }
   }
 
   if (sinfo[NL80211_STA_INFO_RX_BITRATE] != nullptr) {
     struct nlattr *rx_br_info[NL80211_RATE_INFO_MAX + 1];
-    if (nla_parse_nested(rx_br_info, NL80211_RATE_INFO_MAX,
-                           sinfo[NL80211_STA_INFO_RX_BITRATE], nullptr) == 0) {
+    if (nla_parse_nested(rx_br_info, NL80211_RATE_INFO_MAX, sinfo[NL80211_STA_INFO_RX_BITRATE],
+                         nullptr) == 0) {
       if (rx_br_info[NL80211_RATE_INFO_BITRATE32] != nullptr) {
-        net->rx_bitrate_ = nla_get_u32(rx_br_info[NL80211_RATE_INFO_BITRATE32]);
+        net->rx_bitrate_ = nla_get_u32(rx_br_info[NL80211_RATE_INFO_BITRATE32]) * pow(10, 5);
       } else if (rx_br_info[NL80211_RATE_INFO_BITRATE] != nullptr) {
-        net->rx_bitrate_ = nla_get_u16(rx_br_info[NL80211_RATE_INFO_BITRATE]);
+        net->rx_bitrate_ = nla_get_u16(rx_br_info[NL80211_RATE_INFO_BITRATE]) * pow(10, 5);
       }
     }
   }

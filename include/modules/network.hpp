@@ -16,6 +16,8 @@
 #include "util/rfkill.hpp"
 #endif
 
+#define ETH_ALEN 6
+
 enum ip_addr_pref : uint8_t { IPV4, IPV6, IPV4_6 };
 
 namespace waybar::modules {
