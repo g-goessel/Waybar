@@ -33,6 +33,7 @@ class Network : public ALabel {
   static int handleEvents(struct nl_msg*, void*);
   static int handleEventsDone(struct nl_msg*, void*);
   static int handleScan(struct nl_msg*, void*);
+  static int handleStationGet(struct nl_msg *msg, void *data);
 
   void askForStateDump(void);
 
@@ -55,6 +56,7 @@ class Network : public ALabel {
   ip_addr_pref addr_pref_;
   struct sockaddr_nl nladdr_ = {0};
   struct nl_sock* sock_ = nullptr;
+  struct nl_sock* station_sock_ = nullptr;
   struct nl_sock* ev_sock_ = nullptr;
   int efd_;
   int ev_fd_;
